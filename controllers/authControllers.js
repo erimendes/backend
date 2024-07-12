@@ -37,8 +37,8 @@
 
 const adminModel = require("../models/adminModel");
 const bcrypt = require("bcrypt");
-const { responseReture } = require("../utiles/response");
-
+const { responseReturn } = require("../utiles/response");
+const { createToken } = require("../utiles/tokenCreate");
 class authControllers {
   admin_login = async (req, res) => {
     const { email, password } = req.body;
@@ -51,21 +51,28 @@ class authControllers {
 
       if (!admin) {
         console.log("Email not found");
-        return responseReture(res, 404, { error: "Email not found" });
+        return responseReturn(res, 404, { error: "Email not found" });
       }
 
       const isPasswordValid = await bcrypt.compare(password, admin.password);
-      if (!isPasswordValid) {
+      if (isPasswordValid) {
+        const token = await createToken({
+          id: admin.id,
+          role: admin.role,
+        });
+        res.cookie("accessToken", token, {
+          expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        });
+        // Login bem-sucedido
+        console.log("Login successful");
+        responseReturn(res, 200, { token, message: "Login successful", admin });
+      } else {
         console.log("Invalid password");
-        return responseReture(res, 401, { error: "Invalid password" });
+        return responseReturn(res, 401, { error: "Invalid password" });
       }
-
-      // Login bem-sucedido
-      console.log("Login successful");
-      responseReture(res, 200, { message: "Login successful", admin });
     } catch (error) {
       console.error("Error:", error.message);
-      responseReture(res, 500, { error: error.message });
+      responseReturn(res, 500, { error: error.message });
     }
   };
 }
